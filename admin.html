@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div><h1>Menu Admin</h1><p>Changes appear on the customer menu instantly.</p></div>
+  <div><a href="index.html" target="_blank">Open customer menu</a></div>
+</header>
+<main class="grid">
+  <div>
+    <div class="panel">
+      <h2 id="formTitle">Add item</h2>
+      <input type="hidden" id="id">
+      <label for="name">Name</label><input id="name" maxlength="60">
+      <label for="category">Category</label><select id="category"></select>
+      <label for="price">Price (₹)</label><input id="price" type="number" min="0">
+      <label for="desc">Description</label><textarea id="desc" rows="2" maxlength="140"></textarea>
+      <div class="row" style="margin-top:.6rem">
+        <label style="margin:0"><input type="checkbox" id="veg" style="width:auto" checked> Veg</label>
+        <label style="margin:0"><input type="checkbox" id="available" style="width:auto" checked> Available</label>
+      </div>
+      <div class="row"><button class="btn" id="save">Save item</button><button class="btn alt" id="cancel" hidden>Cancel</button></div>
+    </div>
+    <div class="panel" style="margin-top:1.5rem">
+      <h2>Categories</h2>
+      <div class="row"><input id="newCat" placeholder="e.g. Breads" style="flex:1"><button class="btn sm" id="addCat">Add category</button></div>
+      <div id="catList"></div>
+    </div>
+  </div>
+  <div class="panel"><h2>All items</h2><div id="list"></div></div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let data = Store.get();
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1600); }
+function commit(msg) { Store.set(data); render(); if (msg) toast(msg); }
+function render() {
+  $('category').innerHTML = data.categories.map(c => `<option>${esc(c)}</option>`).join('');
+  $('catList').innerHTML = data.categories.map(c => `<div class="admin-item"><div class="row"><span>${esc(c)}</span>
+    <button class="btn alt sm" data-delcat="${esc(c)}">Delete</button></div></div>`).join('');
+  $('list').innerHTML = data.items.length ? data.items.map(i => `<div class="admin-item"><div class="row">
+    <div><strong>${esc(i.name)}</strong> <span class="price" style="font-size:.95rem">${rupee(i.price)}</span><br><small>${esc(i.category)} · ${i.available ? 'Available' : 'Sold out'}</small></div>
+    <div class="row"><button class="btn alt sm" data-tog="${i.id}">${i.available ? 'Mark sold out' : 'Mark available'}</button>
+    <button class="btn alt sm" data-edit="${i.id}">Edit</button><button class="btn alt sm" data-del="${i.id}">Delete</button></div></div></div>`).join('')
+    : '<p class="empty">No items yet. Add your first dish.</p>';
+}
+function reset() { ['id', 'name', 'price', 'desc'].forEach(k => $(k).value = ''); $('veg').checked = $('available').checked = true; $('formTitle').textContent = 'Add item'; $('cancel').hidden = true; }
+$('save').onclick = () => {
+  const name = $('name').value.trim(), price = parseFloat($('price').value);
+  if (!name || isNaN(price) || price < 0) return toast('Enter a name and a valid price');
+  const item = { id: +$('id').value || Date.now(), name, category: $('category').value, price, desc: $('desc').value.trim(), veg: $('veg').checked, available: $('available').checked };
+  const idx = data.items.findIndex(i => i.id === item.id);
+  idx > -1 ? data.items[idx] = item : data.items.push(item);
+  commit(idx > -1 ? 'Item updated' : 'Item added'); reset();
+};
+$('cancel').onclick = reset;
+$('addCat').onclick = () => {
+  const c = $('newCat').value.trim();
+  if (!c || data.categories.includes(c)) return toast('Enter a new category name');
+  data.categories.push(c); $('newCat').value = ''; commit('Category added');
+};
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.del) { data.items = data.items.filter(i => i.id != t.dataset.del); commit('Item deleted'); }
+  if (t.dataset.tog) { const i = data.items.find(i => i.id == t.dataset.tog); i.available = !i.available; commit('Availability updated'); }
+  if (t.dataset.edit) {
+    const i = data.items.find(i => i.id == t.dataset.edit);
+    $('id').value = i.id; $('name').value = i.name; $('category').value = i.category; $('price').value = i.price;
+    $('desc').value = i.desc; $('veg').checked = i.veg; $('available').checked = i.available;
+    $('formTitle').textContent = 'Edit item'; $('cancel').hidden = false; scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (t.dataset.delcat) {
+    const c = t.dataset.delcat;
+    if (data.items.some(i => i.category === c)) return toast('Move or delete items in this category first');
+    data.categories = data.categories.filter(x => x !== c); commit('Category deleted');
+  }
+});
+Store.onChange(() => { data = Store.get(); render(); });
+render();
+</script>
+</body>
+</html>

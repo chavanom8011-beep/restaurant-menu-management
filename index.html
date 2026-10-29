@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div><h1>Our Menu</h1><p>Prices include taxes. Ask us about allergens.</p></div>
+  <div><span class="live" id="live"><i></i>Live menu</span> &nbsp; <a href="admin.html">Admin</a></div>
+</header>
+<main>
+  <nav class="tabs" id="tabs" aria-label="Categories"></nav>
+  <div id="menu"></div>
+</main>
+<script src="app.js"></script>
+<script>
+let active = 'All';
+function render() {
+  const { categories, items } = Store.get();
+  const tabs = ['All', ...categories];
+  document.getElementById('tabs').innerHTML = tabs.map(t =>
+    `<button aria-pressed="${t === active}" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+  const cats = active === 'All' ? categories : [active];
+  let html = '';
+  cats.forEach(c => {
+    const list = items.filter(i => i.category === c);
+    if (!list.length) return;
+    html += `<section class="cat"><h2>${esc(c)}</h2>` + list.map(i => `
+      <div class="item ${i.available ? '' : 'soldout'}">
+        <div><h3>${esc(i.name)}<span class="tag">${i.veg ? 'Veg' : 'Non-veg'}</span>${i.available ? '' : '<span class="tag">Sold out</span>'}</h3>
+        <p>${esc(i.desc || '')}</p></div><div class="price">${rupee(i.price)}</div></div>`).join('') + '</section>';
+  });
+  document.getElementById('menu').innerHTML = html || '<p class="empty">No items yet. Check back soon.</p>';
+}
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; active = b.dataset.t; render();
+});
+Store.onChange(() => {
+  render();
+  const l = document.getElementById('live'); l.classList.remove('flash'); void l.offsetWidth; l.classList.add('flash');
+});
+render();
+</script>
+</body>
+</html>
